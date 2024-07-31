@@ -1,2 +1,2 @@
 # firebase_be
-nodjs application for RDPSMS
+nodjs application for RDPMS
