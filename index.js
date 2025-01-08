@@ -1,16 +1,14 @@
 const express = require("express");
 const useragent = require("express-useragent");
-const http = require("http");
 const bodyParser = require("body-parser");
 const cors = require("cors");
 const fs = require("fs");
 const moment = require("moment");
 const mail = require("./services/mail");
-const SocketIO = require("socket.io");
-const lodash = require("lodash");
+const dotenv = require("dotenv");
 const log4js = require("./log4js");
 const logs = log4js.logger;
-const dotenv = require("dotenv");
+const serverless = require("serverless-http");
 
 dotenv.config();
 
@@ -22,36 +20,8 @@ app.use(bodyParser.json({ limit: "500mb", extended: true }));
 app.use(bodyParser.urlencoded({ limit: "500mb", extended: true }));
 app.use(cors());
 
-const port = process.env.SERVER_PORT || 4001;
-logs.info("Ports", port);
-
-// Load the self-signed certificate (optional, depending on your setup)
-const options = {
-  key: fs.readFileSync('server.key'),
-  cert: fs.readFileSync('server.cert')
-};
-
-const server = http.createServer(options, app);
-
-// WebSocket setup
-const io = require("./socket/socketio").io;
+// WebSocket setup (for Vercel, this won't work as expected - consider external service like Pusher or Socket.io on a separate server)
 let SocketUsers = [];
-
-io.on("connection", (socket) => {
-  logs.info(`Socket started: ${socket.id}`);
-  socket.emit("newClient", { msg: "hi client" });
-
-  socket.on("new", (elem1) => {
-    // Handle "new" event
-  });
-
-  socket.on("disconnect", (reason) => {
-    logs.info("Socket disconnected:", reason);
-    if (reason !== "io server disconnect") {
-      lodash.remove(SocketUsers, (n) => n.clientId == socket.id);
-    }
-  });
-});
 
 // Define routes
 app.get("/", (req, res) => {
@@ -74,19 +44,6 @@ app.use("/railways/notification", require("./src/notification/notification"));
 app.use("/railways/notificationcontrol", require("./src/notification/notificationcontrol"));
 app.use("/railways/pushnotification", require("./pushnotification/pushnotification"));
 
-// Start server
-server.listen(port, async () => {
-  try {
-    logs.info(`Listening on ${port}`);
-    let To = process.env.ERROR_MAILID;
-    let Subject = `RDPMS App is started`;
-    let body = `Dear Team <br> RDPMS App has started in ${process.env.COMPANY_NAME}`;
-    mail.mailSend(To, "", Subject, body);
-  } catch (ex) {
-    logs.error(`Server error: ${ex}`);
-  }
-});
-
 // Error handling
 process.on("uncaughtException", (err, origin) => {
   logs.error(`Caught exception: ${err}`);
@@ -100,9 +57,9 @@ process.on("unhandledRejection", (reason, promise) => {
   mail.mailSendError("Unhandled Rejection", `Promise: ${promise}, Reason: ${reason}`);
 });
 
-require("./models/registereduserdetails");
-require("./models/alertmessage");
-require("./models/stationdetails");
+// Wrap the app for serverless deployment using serverless-http
+module.exports.handler = serverless(app);
+
 
 
 
