@@ -57,7 +57,7 @@ if (cluster.isMaster) {
     const dotenv = require("dotenv");
     dotenv.config();
 
-    const port = 10000;
+     const port = '';
     logs.info("Ports", port);
 
     // app.use(express.json());
